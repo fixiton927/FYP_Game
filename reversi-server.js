@@ -1,14 +1,20 @@
 'use strict'
 var mysql = require('mysql');
-var connection = mysql.createConnection({
+var address_White = '';
+var connection = mysql.createPool({
 	host: 'testdb.csav22kzu2dd.ap-northeast-1.rds.amazonaws.com',
 	user: 'admin',
 	password: 'a123321123',
 	database: 'test',
 });
 
-connection.connect();
-
+  connection.getConnection(function(err, connection) {
+    if(err) { 
+      console.log(err); 
+      callback(true); 
+      return; 
+    }
+  });
 let app = require('express')();
 let server = require('http').Server(app);
 let io = require('socket.io')(server);
@@ -117,17 +123,30 @@ for(let i = 0;i < MAX;i++){
 		rooms[i].people++;
 		function CountPeople(){
 		if(rooms[i].people===1){
+			address_White = socket.handshake.address;
 			console.log('[Room]A player connected to room ' + i);
+			console.log('New connection from ' + address_White );
 		}else if(rooms[i].people===2){
 			console.log('[Room]Second player connected to room ' + i);
+			var address_Black = socket.handshake.address;
+			console.log('New connection from ' + address_Black );
 			var testid = socket.id;
 			
 			console.log('[Room]Unique ID: '+socket.id);
 			
-			connection.query('INSERT INTO test2 '+'SET ID = ?', [testid], function (error, results){
-				if (error) throw error
+			if(address_Black === '' || address_White === ''){
+				console.log('Something wrong with the clients, data not recorded.');
+			}
+			else {
+			connection.query('INSERT INTO test3 '+'SET ID = ?, IP_Black = ?, IP_White = ?', [testid, address_Black, address_White], function (error, results){
+				    if(error) { 
+					console.log(error); 
+					callback(true); 
+					return; 
+					}	
 				console.log(results)
 			});
+			}
 			
 		}else
 			console.log('Ghost');
@@ -140,10 +159,14 @@ for(let i = 0;i < MAX;i++){
 		socket.on('force change turn',function(){
 			socket.broadcast.emit('force change turn');
 		});
+		
+		socket.on('game over', function(){
+			console.log('gam finished')
+		});
 
 		socket.on('disconnect',function(){
 			rooms[i].people--;
-            console.log('someone disconnected room'+i+'.There are '+rooms[i].people+' people in the room');
+            console.log('[Disconnect]someone disconnected from room'+i+'.There are '+rooms[i].people+' people in the room');
 		});
 
 	});
