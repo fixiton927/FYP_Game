@@ -1,6 +1,20 @@
 'use strict'
+
+var bScore1 = '';
+var bScore2 = '';
+var bScore3 = '';
+var bScore4 = '';
+var bScore5 = '';
+
+var wScore1 = '';
+var wScore2 = '';
+var wScore3 = '';
+var wScore4 = '';
+var wScore5 = '';
+
 var mysql = require('mysql');
 var address_White = '';
+var address_Black = '';
 var connection = mysql.createPool({
 	host: 'testdb.csav22kzu2dd.ap-northeast-1.rds.amazonaws.com',
 	user: 'admin',
@@ -15,15 +29,15 @@ var connection = mysql.createPool({
       return; 
     }
   });
-let app = require('express')();
-let server = require('http').Server(app);
-let io = require('socket.io')(server);
 
-server.listen(4747, function() {
-    console.log('listening on:4747, Server opened');
+var cookieparser = require('cookie-parser'); 
+let io = require('socket.io').listen(4747, function() {
+	console.log('listening on:4747, Server opened');
 });
 
-let MAX = 60;
+
+
+let MAX = 5;
 let hall = null;
 let queue = null;
 let rooms = [];
@@ -93,8 +107,10 @@ queue.socket = io.of('/queue').on('connection',function(socket){
 
     if(queue.people === 1){
 		socket.emit('set stand','black');
+		address_Black = socket.handshake.address;
 	}else if(queue.people === 2){
 		socket.emit('set stand','white');
+		address_White = socket.handshake.address;
 		let roomId = getFreeRoom();
         console.log(roomId+"roomId");
 		if(roomId >= 0){
@@ -123,12 +139,12 @@ for(let i = 0;i < MAX;i++){
 		rooms[i].people++;
 		function CountPeople(){
 		if(rooms[i].people===1){
-			address_White = socket.handshake.address;
+			
 			console.log('[Room]A player connected to room ' + i);
 			console.log('New connection from ' + address_White );
 		}else if(rooms[i].people===2){
 			console.log('[Room]Second player connected to room ' + i);
-			var address_Black = socket.handshake.address;
+			
 			console.log('New connection from ' + address_Black );
 			var testid = socket.id;
 			
@@ -152,6 +168,13 @@ for(let i = 0;i < MAX;i++){
 			console.log('Ghost');
 	}
 		CountPeople();
+		
+		socket.on('receivedata', function(score){
+			console.log(score.bc);
+			console.log(score.wc);
+			
+		});
+		
 		socket.on('update chessboard',function(chessCoor){
 			socket.broadcast.emit('update chessboard',chessCoor);
 		});
@@ -160,8 +183,8 @@ for(let i = 0;i < MAX;i++){
 			socket.broadcast.emit('force change turn');
 		});
 		
-		socket.on('game over', function(){
-			console.log('gam finished')
+		socket.on('gam over', function(){
+			console.log('gam finished');
 		});
 
 		socket.on('disconnect',function(){
